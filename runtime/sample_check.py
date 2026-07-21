@@ -41,6 +41,15 @@ def main(args):
 
     idx = list(range(n - val_n, n))[:args.n]
 
+    prompts_path = f"{args.data}_prompts.json"
+    prompts = None
+    if os.path.exists(prompts_path):
+        with open(prompts_path) as f:
+            all_prompts = json.load(f)
+        prompts = [all_prompts[i] for i in idx]
+    else:
+        print(f"no {prompts_path} — older data prep, showing images without instruction text")
+
     model = UNet(text_dim=text_dim).to(device).eval()
     ckpt = torch.load(args.ckpt, map_location=device)
     model.load_state_dict(ckpt["model"])
@@ -59,6 +68,9 @@ def main(args):
             for i in range(len(idx))]
     Image.fromarray(np.concatenate(rows, axis=0)).save(args.out)
     print(f"saved {args.out}  (columns: before | real after | generated, {len(idx)} rows)")
+    if prompts:
+        for i, p in enumerate(prompts):
+            print(f"  row {i}: {p!r}")
 
 
 if __name__ == "__main__":

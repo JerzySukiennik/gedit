@@ -23,6 +23,7 @@ def build(args):
     images_path = f"{args.out_prefix}_images.bin"
     text_path = f"{args.out_prefix}_text.bin"
     meta_path = f"{args.out_prefix}_meta.json"
+    prompts_path = f"{args.out_prefix}_prompts.json"
 
     sample_bytes = 2 * 3 * args.res * args.res
     if os.path.exists(images_path) and os.path.getsize(images_path) >= args.n * sample_bytes:
@@ -79,6 +80,13 @@ def build(args):
             "prompts_sample": prompts[:20],
         }, f, indent=2)
     print(f"wrote {meta_path}")
+
+    # Full prompt list, index-aligned with the images/text binaries — lets
+    # runtime/sample_check.py show the actual instruction next to each
+    # generated image instead of just judging structural reconstruction.
+    with open(prompts_path, "w") as f:
+        json.dump(prompts, f)
+    print(f"wrote {prompts_path} ({len(prompts)} prompts)")
 
 
 if __name__ == "__main__":
