@@ -8,6 +8,7 @@ resumes clean.
 import argparse
 import json
 import os
+import sys
 import time
 
 import numpy as np
@@ -15,6 +16,10 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
 
+# Running this as `python train/train.py` puts train/ on sys.path, not the
+# repo root — the same fix data/fetch_dataset.py already needed for its
+# `from model.clip_encoder import ...` import.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 from model.unet import UNet
 from model.scheduler import DiffusionSchedule
 
