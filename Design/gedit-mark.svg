@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 310 212" width="310" height="212" role="img" aria-label="Gedit">
+  <title>Gedit</title>
+  <!--
+    Construction grid — identical skeleton to microg-mark.svg, so the two
+    marks read as one family:
+      stroke weight  15   identical for both glyphs, both models
+      baseline      140   crop-corner foot and G foot share it
+      x-height top   74   crop-corner top edge (same y as mu's top in MicroG)
+      descender     172   crop-corner bottom edge (same y as mu's descender)
+      G centre  200,90    radius 50 — untouched, literally the same path as MicroG
+    Left glyph is not a letter: it's a crop-mark (two opposing L corners),
+    the universal photo-editing icon, standing in for "edit" the way mu
+    stands in for "micro". It occupies the exact same bounding box as mu
+    (x 60-132, y 74-172) on purpose, so the pair sits at the same optical
+    weight as MicroG and needs no re-centering in the icon.
+  -->
+  <g fill="none" stroke="#fff" stroke-width="15" stroke-linecap="butt" stroke-linejoin="round" transform="translate(0,11)">
+    <path d="M60 104 L60 74 L96 74"/>
+    <path d="M132 142 L132 172 L96 172"/>
+    <path d="M243 62 a50 50 0 1 0 0 56 V90 H200"/>
+  </g>
+</svg>

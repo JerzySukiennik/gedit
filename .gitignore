@@ -1,0 +1,16 @@
+# secrets — never commit
+.env
+
+# environment
+.venv/
+
+# dataset binaries and checkpoints (gigabytes, regenerable from scripts)
+data/*.bin
+data/*.json
+checkpoints/
+run/
+
+# python
+__pycache__/
+*.pyc
+.DS_Store
