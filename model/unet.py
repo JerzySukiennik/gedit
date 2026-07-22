@@ -67,6 +67,14 @@ class SelfAttention2d(nn.Module):
         self.norm = nn.GroupNorm(8, channels)
         self.qkv = nn.Conv2d(channels, channels * 3, 1)
         self.proj = nn.Conv2d(channels, channels, 1)
+        # Zero-init: at step 0 this block is an exact identity (x + 0 = x).
+        # Without it, a randomly-initialized proj injects noise into the
+        # residual stream from the very first step; the network then has to
+        # spend early training just undoing that instead of learning
+        # anything useful. Standard practice for new attention blocks added
+        # to a diffusion U-Net.
+        nn.init.zeros_(self.proj.weight)
+        nn.init.zeros_(self.proj.bias)
 
     def forward(self, x):
         b, c, h, w = x.shape
@@ -93,6 +101,14 @@ class CrossAttention2d(nn.Module):
         self.to_k = nn.Linear(text_dim, channels)
         self.to_v = nn.Linear(text_dim, channels)
         self.proj = nn.Conv2d(channels, channels, 1)
+        # Zero-init, same reasoning as SelfAttention2d — with SEVEN of these
+        # blocks chained through the U-Net (3 down + bottleneck + 3 up), an
+        # un-zeroed proj compounds noise at every one of them before the
+        # network has learned anything, which is the leading suspect for why
+        # step 8000 produced near-pure static instead of a blurry-but-coherent
+        # image the way the earlier FiLM model did at a comparable stage.
+        nn.init.zeros_(self.proj.weight)
+        nn.init.zeros_(self.proj.bias)
 
     def forward(self, x, text_seq):
         """x: [B,C,H,W]. text_seq: [B,L,text_dim]."""
