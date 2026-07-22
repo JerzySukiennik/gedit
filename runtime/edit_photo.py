@@ -43,15 +43,15 @@ def main(args):
 
     print("loading CLIP text encoder (frozen, first run downloads it)...")
     encoder = ClipTextEncoder(device=device)
-    text_emb = encoder.encode([args.prompt])
+    text_seq = encoder.encode([args.prompt])
 
     before = load_image(args.image, args.res).unsqueeze(0).to(device)
-    text_emb = text_emb.to(device)
+    text_seq = text_seq.to(device)
 
     schedule = DiffusionSchedule(device=device)
     print(f"sampling ({args.steps} DDIM steps)...")
     with torch.no_grad():
-        generated = schedule.ddim_sample(model, before, text_emb, steps=args.steps, device=device)
+        generated = schedule.ddim_sample(model, before, text_seq, steps=args.steps, device=device)
 
     grid = np.concatenate([to_img(before[0]), to_img(generated[0])], axis=1)
     Image.fromarray(grid).save(args.out)

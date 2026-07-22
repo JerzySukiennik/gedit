@@ -32,12 +32,12 @@ def main(args):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     with open(f"{args.data}_meta.json") as f:
         meta = json.load(f)
-    res, text_dim, n, val_n = meta["res"], meta["text_dim"], meta["n"], meta["val_n"]
+    res, text_dim, seq_len, n, val_n = meta["res"], meta["text_dim"], meta["seq_len"], meta["n"], meta["val_n"]
 
     images = np.memmap(f"{args.data}_images.bin", dtype=np.uint8, mode="r",
                         shape=(n, 2, 3, res, res))
     text = np.memmap(f"{args.data}_text.bin", dtype=np.float32, mode="r",
-                      shape=(n, text_dim))
+                      shape=(n, seq_len, text_dim))
 
     idx = list(range(n - val_n, n))[:args.n]
 

@@ -23,11 +23,17 @@ Czego potrzebujesz: konta na kaggle.com z **zweryfikowanym numerem telefonu**.
 
 Powstaną `gedit_images.bin` (obrazy przed/po, uint8), `gedit_text.bin` (embeddingi CLIP instrukcji edycji, float32) i `gedit_meta.json`.
 
-## Krok 2 — trening (~5.5h dla 28000 kroków, zmierzone ~0,7s/krok na T4x2)
+## Krok 1.5 — po zmianie architektury (FiLM → cross-attention, 2026-07-22): przelicz teksty
+
+Jeśli masz już `gedit-data` (obrazy pobrane), **nie trzeba pobierać ich drugi raz** — sam koder tekstu się zmienił (pełna sekwencja tokenów zamiast jednego wektora, patrz `model/clip_encoder.py`). Wklej [`03-reencode-text.py`](03-reencode-text.py) w nowym notebooku (Accelerator: None, Internet: On, **Add Input** → istniejący `gedit-data`), uruchom (kilka minut, nie godziny), zapisz Output jako Dataset `gedit-data` (nadpisując stary).
+
+Stary checkpoint (FiLM) **nie jest kompatybilny** z nową architekturą — nie da się go wznowić, kolejny krok to trening od zera.
+
+## Krok 2 — trening (czas nieznany do pierwszego pomiaru na nowej architekturze)
 
 1. **New Notebook**
 2. **Accelerator: GPU T4 x2**, **Internet: On**, **Persistence: Variables and Files**
-3. **Add Input** → dataset `gedit-data`
+3. **Add Input** → dataset `gedit-data` (już z przeliczonymi tekstami)
 4. Wklej [`02-train.py`](02-train.py) i uruchom
 5. **Save Version → Save & Run All (Commit)** — nie zwykłe odpalenie komórki. Batch-commit wypełnia zakładkę **Output** automatycznie po zakończeniu; interaktywna sesja ("Edit") tego nie robi, trzeba wtedy ręcznie szukać pliku przez panel plików po prawej (Notebook → Output → rozwiń `/kaggle/working` → `run/` → `ckpt.pt`) — działa, ale niepotrzebnie karkołomne.
 6. Po zakończeniu (albo ucięciu na 12h): **Output → New Dataset**, nazwij **`gedit-ckpt`**

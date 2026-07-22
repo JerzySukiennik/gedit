@@ -45,6 +45,17 @@ Zweryfikowane w realnym kodzie gzowo-ai (`~/Downloads/Claude/Projects/Gzowo AI/v
 - **Historia edycji**: nowy IndexedDB store wzorowany 1:1 na `js/model3d/store.js` (`gzowo-models` → analogicznie `gzowo-photo-edits`, rekordy `{id, prompt, before(dataURL), after(dataURL), createdAt}`). To **świadomy wyjątek** od zasady "klatki Vision nigdy nie trafiają na dysk" — dotyczy WYŁĄCZNIE finalnego zdjęcia przed/po tej jednej funkcji, reszta trybu Vision (co widzisz, OCR, itd.) zostaje efemeryczna jak dziś.
 - **Wyświetlanie wyniku**: w tym samym oknie asystenta, jako panel/widget obok rozmowy (spójne z resztą UI, styl Gzowo Aperture — mono, `.glass` gdzie pasuje).
 
+## 2a. Architektura v2: cross-attention zamiast FiLM (2026-07-22)
+
+Po pierwszym treningu (FiLM, step 8000/20k par) test na realnym zdjęciu ("add a hat") pokazał, że model **nie potrafi lokalizować edycji obiektowych** — FiLM warunkuje globalnie (jedna skala/przesunięcie na cały obraz z pojedynczego, spłaszczonego wektora tekstu), więc nie ma mechanizmu "to słowo → to miejsce w obrazie". Jurek zdecydował: **chce dodawania obiektów**, więc to wymaga realnej zmiany architektury, nie tylko więcej danych.
+
+Zmiana:
+- `model/clip_encoder.py`: zamiast pojedynczego pooled wektora (`CLIPTextModelWithProjection.text_embeds`), zwraca **pełną sekwencję per-token** (`CLIPTextModel.last_hidden_state`, stały pad do `SEQ_LEN=32`).
+- `model/unet.py`: **cross-attention** do tej sekwencji po każdym poziomie rozdzielczości (down/up) + bottleneck, zamiast FiLM na tekst. Timestep (dyfuzja) zostaje przy FiLM — to faktycznie globalna wielkość ("ile szumu usunąć"), różnica jest tylko w warunkowaniu na TEKST. Zmierzone: **14,5M parametrów** (z 12,9M), forward/DDIM/eksport ONNX zweryfikowane lokalnie.
+- `data/reencode_text.py` (nowy): przelicza TYLKO embeddingi tekstu na istniejącym, już pobranym datasecie (obrazy nie muszą być pobierane drugi raz) — patrz `kaggle/03-reencode-text.py`.
+- **Stary checkpoint (FiLM) niekompatybilny** — nie da się go wznowić, trening od zera na tym samym datasecie 60k. Jurek świadomie zatrzymał trwającą sesję FiLM (step ~8400/28000) żeby nie marnować limitu Kaggle na coś, co i tak trafi do kosza.
+- `kaggle/02-train.py`: `STEPS` zresetowane do **8000** (nowy pomiar throughput na cross-attention, model droższy obliczeniowo niż FiLM per krok).
+
 ## 4. Co NIE wchodzi w ten etap
 
 - iMessage / wysyłanie zdjęcia (osobna runda po core).
@@ -61,12 +72,18 @@ Zweryfikowane w realnym kodzie gzowo-ai (`~/Downloads/Claude/Projects/Gzowo AI/v
 
 ## Kolejne kroki
 
-1. Jurek zatwierdza tę specę ("go").
-2. Zbudowanie `Design/gedit-{mark,mark-inverse,icon}.svg` → PNG → `.icns` (skopiować i zaadaptować pipeline z MicroG).
-3. Przygotowanie podzbioru datasetu (10-30k par, niska rozdzielczość) + notebook treningowy na Kaggle (wzorzec z MicroG).
-4. Trening + iteracja jakości (checkpointy, ocena wizualna).
-5. Eksport ONNX, dodanie `onnxruntime-node` do bridge'a gzowo-ai, `bridge/photo-edit.js` + endpointy.
-6. `edit_camera_photo` tool + widget wyniku + IndexedDB historia w gzowo-ai.
-7. Test end-to-end na realnym Macu, potem iMessage jako runda 2.
+1. ✅ Jurek zatwierdził specę.
+2. ✅ `Design/gedit-{mark,mark-inverse,icon}.svg` gotowe.
+3. ✅ Data/training pipeline napisany i przetestowany (`data/`, `train/`, `kaggle/`).
+4. **W toku** — trening: step 8000/8000 na 20k parach zrobiony, wizualnie oceniony (SPEC.md decyzje wyżej), dataset skalowany do 60k, `STEPS=28000`, kolejna sesja Kaggle w toku.
+5. ✅ **Eksport ONNX + integracja z bridge'em gzowo-ai — zrobione i zweryfikowane end-to-end (2026-07-22).** `runtime/export_onnx.py` eksportuje U-Net, `bridge/photo-edit.js` (job-queue, DDIM w JS, ten sam schedule co `model/scheduler.py`) + `bridge/package.json` (`onnxruntime-node`, `@huggingface/transformers`) + routing w `bridge/server.js` + whitelist w `desktop/package.json`. Model w `~/Library/Application Support/Gzowo AI/models/gedit_unet.onnx` (poza paczką, zgodnie ze spec). Test przez curl na prawdziwym zdjęciu: wynik strukturalnie identyczny do lokalnego testu Python (`runtime/edit_photo.py`) — port jest poprawny.
+6. ✅ `edit_camera_photo` tool (`js/vision/vision-tools.js`) + `captureModelInput()` w `js/vision/camera.js` + widget (`js/widgets/photo-edit.js`, **funkcjonalny, jeszcze bez pełnego designu/HCI review**) + IndexedDB (`js/photo-edit/store.js`) + wpięcie w `js/main.js`.
+7. Pozostało: test end-to-end w realnej aplikacji (głos → kamera → wynik), potem iMessage jako runda 2, potem docelowy design pass na widgecie.
+
+### Lekcje z integracji (2026-07-22)
+
+- **`onnxruntime-node` też ma sufit `darwin-x64`** — najnowsze wersje (1.27+) porzuciły binarki dla Intel Maca, dokładnie jak PyTorch. Przypięte na **1.19.2** (ostatnia z binarką x64) w `bridge/package.json`, z `overrides` wymuszającym tę samą wersję dla zagnieżdżonej zależności `@huggingface/transformers`.
+- **`@xenova/transformers` (2.x) ma bug**: `Tensor.data must be a typed array` — jego `Tensor` robi `Object.assign(this, new ONNXTensor(...))`, co nie kopiuje getterów z prototypu (`.data` ginie, tylko `.cpuData` zostaje). Występował z KAŻDĄ wersją `onnxruntime-node` (1.14.0 i 1.19.2). **Fix: przejście na następcę `@huggingface/transformers` (4.x)** — aktywnie rozwijany, ten sam projekt pod nową nazwą po tym jak Xenova przekazała go Hugging Face.
+- Dwie oddzielne kopie `onnxruntime-node` w jednym procesie Node (nasza + zagnieżdżona w bibliotece tekstowej) dają ostrzeżenie macOS `Class ... is implemented in both ...` (ryzyko "mysterious crashes") — naprawione przez `overrides` wymuszający jedną wspólną wersję.
 
 Powiązane: [[microg]], [[gzowo-ai]], [[stack]], [[identity]]

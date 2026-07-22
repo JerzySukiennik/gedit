@@ -1,5 +1,5 @@
 """Gedit training loop — diffusion noise-prediction loss on (before, after,
-text_emb) triples prepared by data/fetch_dataset.py. Mirrors MicroG's
+text_seq) triples prepared by data/fetch_dataset.py. Mirrors MicroG's
 train/train.py conventions: gradient accumulation, DataParallel across
 Kaggle's T4x2, checkpointing every --ckpt-every steps so a killed 12h session
 resumes clean.
@@ -30,11 +30,12 @@ class PairDataset(Dataset):
             meta = json.load(f)
         self.res = meta["res"]
         self.text_dim = meta["text_dim"]
+        self.seq_len = meta["seq_len"]
         n, val_n = meta["n"], meta["val_n"]
         self.images = np.memmap(f"{data_prefix}_images.bin", dtype=np.uint8, mode="r",
                                  shape=(n, 2, 3, self.res, self.res))
         self.text = np.memmap(f"{data_prefix}_text.bin", dtype=np.float32, mode="r",
-                               shape=(n, self.text_dim))
+                               shape=(n, self.seq_len, self.text_dim))
         self.idx = range(0, n - val_n) if split == "train" else range(n - val_n, n)
 
     def __len__(self):
@@ -89,12 +90,12 @@ def main(args):
         opt.zero_grad()
         loss_accum = 0.0
         for _ in range(args.grad_accum):
-            before, after, text_emb = next(data_iter)
-            before, after, text_emb = before.to(device), after.to(device), text_emb.to(device)
+            before, after, text_seq = next(data_iter)
+            before, after, text_seq = before.to(device), after.to(device), text_seq.to(device)
             b = before.shape[0]
             t = torch.randint(0, schedule.timesteps, (b,), device=device)
             noisy_after, noise = schedule.q_sample(after, t)
-            pred = model(torch.cat([noisy_after, before], dim=1), t, text_emb)
+            pred = model(torch.cat([noisy_after, before], dim=1), t, text_seq)
             loss = F.mse_loss(pred, noise) / args.grad_accum
             loss.backward()
             loss_accum += loss.item()
@@ -113,12 +114,12 @@ def main(args):
             model.eval()
             vloss, n_batches = 0.0, 0
             with torch.no_grad():
-                for before, after, text_emb in val_loader:
-                    before, after, text_emb = before.to(device), after.to(device), text_emb.to(device)
+                for before, after, text_seq in val_loader:
+                    before, after, text_seq = before.to(device), after.to(device), text_seq.to(device)
                     b = before.shape[0]
                     t = torch.randint(0, schedule.timesteps, (b,), device=device)
                     noisy_after, noise = schedule.q_sample(after, t)
-                    pred = model(torch.cat([noisy_after, before], dim=1), t, text_emb)
+                    pred = model(torch.cat([noisy_after, before], dim=1), t, text_seq)
                     vloss += F.mse_loss(pred, noise).item()
                     n_batches += 1
             print(f"  val loss {vloss / max(n_batches, 1):.4f}")

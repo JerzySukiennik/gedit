@@ -20,20 +20,17 @@ REPO = "https://github.com/JerzySukiennik/gedit.git"
 WORK = "/kaggle/working"
 OUT = f"{WORK}/run"
 
-# Measured on the first two real runs: ~0.7s/step on T4x2, so 8000 steps took
-# under 2 hours — comfortably inside the 12h session cap. Visual quality
-# (runtime/sample_check.py) kept improving from step 1600 all the way to
-# 8000 despite the single-batch training loss having gone flat around step
-# 300-760 — that noisy per-batch number was misleading, not a real plateau.
-#
-# STEPS recalculated 2026-07-22 for the N=60000 dataset (01-prep.py): 40000
-# steps on the OLD 20k-pair set would have been ~65 epochs with zero
-# augmentation — real overfitting risk. 59700 train pairs / 32 batch ≈ 1866
-# steps/epoch, so 28000 steps ≈ 15 epochs, a healthier repetition count on
-# 3x more distinct data. Still a ceiling, not a target: ckpt.pt is written
-# every CKPT_EVERY steps regardless, so it's safe to grab it and stop early
-# whenever a sample_check looks good enough.
-BATCH, ACCUM, STEPS, WARMUP = 32, 1, 28000, 200
+# RESET 2026-07-22: architecture changed from FiLM to cross-attention (see
+# model/unet.py) so the old ~0.7s/step measurement no longer applies —
+# cross-attention is more compute per step. This checkpoint is NOT resumable
+# from the old FiLM run either (incompatible weight shapes) — this is a
+# fresh start on the same 60k-pair dataset (01-prep.py + 03-reencode-text.py
+# for the new text format). STEPS set conservatively back to 8000 for a
+# first real measurement before committing to a longer run; bump once
+# actual throughput is known, same "measured not assumed" approach as
+# MicroG. Still a ceiling, not a target — ckpt.pt is written every
+# CKPT_EVERY steps regardless, safe to grab and stop early.
+BATCH, ACCUM, STEPS, WARMUP = 32, 1, 8000, 200
 
 if os.path.exists(f"{WORK}/gedit"):
     subprocess.run(["git", "-C", f"{WORK}/gedit", "pull", "--ff-only"], check=True)

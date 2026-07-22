@@ -27,13 +27,13 @@ def main(args):
 
     dummy_x = torch.randn(1, 6, args.res, args.res)
     dummy_t = torch.zeros(1, dtype=torch.long)
-    dummy_text = torch.randn(1, args.text_dim)
+    dummy_text = torch.randn(1, args.seq_len, args.text_dim)
 
     torch.onnx.export(
         model, (dummy_x, dummy_t, dummy_text), args.out,
-        input_names=["x", "t", "text_emb"], output_names=["pred_noise"],
+        input_names=["x", "t", "text_seq"], output_names=["pred_noise"],
         dynamic_axes={"x": {0: "batch"}, "t": {0: "batch"},
-                       "text_emb": {0: "batch"}, "pred_noise": {0: "batch"}},
+                       "text_seq": {0: "batch"}, "pred_noise": {0: "batch"}},
         opset_version=17,
     )
     print(f"exported {args.out}")
@@ -43,7 +43,7 @@ def main(args):
     # that doesn't generalize) is worse than a loud failure.
     sess = ort.InferenceSession(args.out)
     onnx_out = sess.run(None, {"x": dummy_x.numpy(), "t": dummy_t.numpy(),
-                                "text_emb": dummy_text.numpy()})[0]
+                                "text_seq": dummy_text.numpy()})[0]
     with torch.no_grad():
         torch_out = model(dummy_x, dummy_t, dummy_text).numpy()
     diff = np.abs(onnx_out - torch_out).max()
@@ -58,4 +58,5 @@ if __name__ == "__main__":
     p.add_argument("--out", default="./gedit_unet.onnx")
     p.add_argument("--res", type=int, default=128)
     p.add_argument("--text-dim", type=int, default=512)
+    p.add_argument("--seq-len", type=int, default=32)
     main(p.parse_args())

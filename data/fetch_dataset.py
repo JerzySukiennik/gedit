@@ -4,7 +4,8 @@ Streams `timbrooks/instructpix2pix-clip-filtered` from Hugging Face (it's far
 too large to keep in full — see SPEC.md #2), takes the first `--n` pairs,
 resizes both images to `--res` and writes them as a single raw uint8 binary
 (mmap-friendly, same idea as MicroG's pl_train.bin) plus a separate float32
-binary of frozen CLIP pooled text embeddings for the edit instructions.
+binary of frozen CLIP per-token text sequence embeddings for the edit
+instructions (full sequence, not pooled — see model/clip_encoder.py for why).
 
 Run once; the output is meant to become a Kaggle Dataset consumed by
 train/train.py.
@@ -66,7 +67,7 @@ def build(args):
     from model.clip_encoder import ClipTextEncoder
 
     encoder = ClipTextEncoder(device="cpu")
-    emb = encoder.encode(prompts, batch_size=args.clip_batch)
+    emb = encoder.encode(prompts, batch_size=args.clip_batch)  # [N, seq_len, embed_dim]
     emb.numpy().astype(np.float32).tofile(text_path)
     print(f"text embeddings done: {tuple(emb.shape)}, {os.path.getsize(text_path)/1e6:.1f} MB")
 
@@ -76,6 +77,7 @@ def build(args):
             "val_n": min(args.val_n, written // 10),
             "res": args.res,
             "text_dim": encoder.embed_dim,
+            "seq_len": encoder.seq_len,
             "clip_model": encoder.model.name_or_path,
             "prompts_sample": prompts[:20],
         }, f, indent=2)
