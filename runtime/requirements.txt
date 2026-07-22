@@ -1,0 +1,12 @@
+# For local inference/export on the Intel MacBook (runtime/*.py), not for
+# Kaggle training. Pins matter here: PyPI has no torch wheel newer than
+# 2.2.2 for Intel macOS (PyTorch dropped x86_64 macOS after that), and
+# transformers >=4.42 requires torch >=2.4 — so transformers is pinned to
+# the last version that still works with 2.2.2. numpy<2 avoids a
+# was-compiled-for-numpy-1.x ABI crash against this torch build.
+torch==2.2.2
+numpy<2
+transformers==4.40.2
+pillow
+onnx
+onnxruntime
