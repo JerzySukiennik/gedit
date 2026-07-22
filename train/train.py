@@ -126,8 +126,13 @@ def main(args):
 
         if step % args.ckpt_every == 0 or step == args.max_steps:
             raw_model = model.module if hasattr(model, "module") else model
+            # Old (pre-1.6) pickle serialization, not torch's default zip
+            # format: a zip-shaped ckpt.pt gets auto-exploded into its
+            # internal data.pkl/data/N files the moment it's downloaded from
+            # or uploaded to Kaggle as a Dataset, breaking the exact-filename
+            # match every resume step depends on.
             torch.save({"model": raw_model.state_dict(), "opt": opt.state_dict(), "step": step},
-                       ckpt_path)
+                       ckpt_path, _use_new_zipfile_serialization=False)
 
     print(f"done — {args.max_steps} steps in {(time.time()-t0)/3600:.1f}h")
 
