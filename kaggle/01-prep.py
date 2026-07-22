@@ -8,7 +8,17 @@ notebook. Done here rather than from home for the same reason as MicroG:
 Kaggle's connection is fast, a domestic download of this dataset is not.
 
 Settings: GPU off (CPU-only stage), Internet ON.
-Expect roughly 30-60 min for 20k pairs at 128px.
+Expect roughly 1.5-2h for 60k pairs at 128px (scales ~linearly with N).
+
+N=60000 (raised from the original 20000, 2026-07-22): 40000 training steps
+on the original 20k pairs would have been ~65 epochs over the same data with
+zero augmentation — real risk of memorizing the training set instead of
+learning general edit patterns. The HF stream order is deterministic, so
+this re-run's first 20000 pairs are exactly the old dataset plus 40000 new
+ones, not a fresh unrelated sample — nothing already-downloaded is wasted in
+spirit, though this script re-fetches from byte 0 rather than only the delta
+(see the resume check below: it compares total file size to the new N, so a
+smaller old file always triggers a full re-run).
 """
 
 import os
@@ -17,7 +27,7 @@ import sys
 
 REPO = "https://github.com/JerzySukiennik/gedit.git"
 WORK = "/kaggle/working"
-N, RES = 20000, 128
+N, RES = 60000, 128
 
 if os.path.exists(f"{WORK}/gedit"):
     # A stale checkout from an earlier attempt in this same session would

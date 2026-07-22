@@ -25,10 +25,15 @@ OUT = f"{WORK}/run"
 # (runtime/sample_check.py) kept improving from step 1600 all the way to
 # 8000 despite the single-batch training loss having gone flat around step
 # 300-760 — that noisy per-batch number was misleading, not a real plateau.
-# STEPS here is a generous ceiling, not a target: ckpt.pt is written every
-# CKPT_EVERY steps regardless, so it's safe to grab it and stop the session
-# early (or let it run) whenever a sample_check looks good enough.
-BATCH, ACCUM, STEPS, WARMUP = 32, 1, 40000, 200
+#
+# STEPS recalculated 2026-07-22 for the N=60000 dataset (01-prep.py): 40000
+# steps on the OLD 20k-pair set would have been ~65 epochs with zero
+# augmentation — real overfitting risk. 59700 train pairs / 32 batch ≈ 1866
+# steps/epoch, so 28000 steps ≈ 15 epochs, a healthier repetition count on
+# 3x more distinct data. Still a ceiling, not a target: ckpt.pt is written
+# every CKPT_EVERY steps regardless, so it's safe to grab it and stop early
+# whenever a sample_check looks good enough.
+BATCH, ACCUM, STEPS, WARMUP = 32, 1, 28000, 200
 
 if os.path.exists(f"{WORK}/gedit"):
     subprocess.run(["git", "-C", f"{WORK}/gedit", "pull", "--ff-only"], check=True)
