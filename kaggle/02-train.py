@@ -20,9 +20,15 @@ REPO = "https://github.com/JerzySukiennik/gedit.git"
 WORK = "/kaggle/working"
 OUT = f"{WORK}/run"
 
-# Placeholder schedule — tune BATCH/STEPS after the first real throughput
-# measurement, same as MicroG's 02-train.py did (measured, not assumed).
-BATCH, ACCUM, STEPS, WARMUP = 32, 1, 8000, 200
+# Measured on the first two real runs: ~0.7s/step on T4x2, so 8000 steps took
+# under 2 hours — comfortably inside the 12h session cap. Visual quality
+# (runtime/sample_check.py) kept improving from step 1600 all the way to
+# 8000 despite the single-batch training loss having gone flat around step
+# 300-760 — that noisy per-batch number was misleading, not a real plateau.
+# STEPS here is a generous ceiling, not a target: ckpt.pt is written every
+# CKPT_EVERY steps regardless, so it's safe to grab it and stop the session
+# early (or let it run) whenever a sample_check looks good enough.
+BATCH, ACCUM, STEPS, WARMUP = 32, 1, 40000, 200
 
 if os.path.exists(f"{WORK}/gedit"):
     subprocess.run(["git", "-C", f"{WORK}/gedit", "pull", "--ff-only"], check=True)
