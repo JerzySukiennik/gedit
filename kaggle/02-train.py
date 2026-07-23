@@ -20,17 +20,18 @@ REPO = "https://github.com/JerzySukiennik/gedit.git"
 WORK = "/kaggle/working"
 OUT = f"{WORK}/run"
 
-# RESET 2026-07-22: architecture changed from FiLM to cross-attention (see
-# model/unet.py) so the old ~0.7s/step measurement no longer applies —
-# cross-attention is more compute per step. This checkpoint is NOT resumable
-# from the old FiLM run either (incompatible weight shapes) — this is a
-# fresh start on the same 60k-pair dataset (01-prep.py + 03-reencode-text.py
-# for the new text format). STEPS set conservatively back to 8000 for a
-# first real measurement before committing to a longer run; bump once
-# actual throughput is known, same "measured not assumed" approach as
-# MicroG. Still a ceiling, not a target — ckpt.pt is written every
+# Cross-attention + zero-init, measured 2026-07-22: ~0.75s/step on T4x2
+# (slightly slower than FiLM's 0.7s/step, as expected — more compute per
+# step). First zero-init checkpoint (step 8000, ~4.3 epochs on 60k pairs)
+# was visibly better than the pre-zero-init run (no longer pure static) but
+# still far from FiLM's comparable-stage coherence, and not yet
+# distinguishing between prompts — cross-attention has a harder thing to
+# learn (attention patterns, not just a global tone shift) and needs more
+# than 4.3 epochs. STEPS raised to 24000 (~12.9 epochs, in line with what
+# worked for FiLM) to give it a real chance before judging the architecture
+# itself. Still a ceiling, not a target — ckpt.pt is written every
 # CKPT_EVERY steps regardless, safe to grab and stop early.
-BATCH, ACCUM, STEPS, WARMUP = 32, 1, 8000, 200
+BATCH, ACCUM, STEPS, WARMUP = 32, 1, 24000, 200
 
 if os.path.exists(f"{WORK}/gedit"):
     subprocess.run(["git", "-C", f"{WORK}/gedit", "pull", "--ff-only"], check=True)
