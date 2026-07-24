@@ -27,10 +27,17 @@ OUT = f"{WORK}/run"
 # been hiding it) — but still doesn't reliably follow specific instructions
 # ("make it black and white" didn't desaturate). Not evidence of a broken
 # architecture, more likely still just needs more training for a harder
-# task than FiLM's global tone-shift. STEPS raised to 40000 (~21.5 epochs).
-# Still a ceiling, not a target — ckpt.pt is written every CKPT_EVERY steps
-# regardless, safe to grab and stop early.
-BATCH, ACCUM, STEPS, WARMUP = 32, 1, 40000, 200
+# task than FiLM's global tone-shift.
+#
+# STEPS raised to 70000 (~37.5 epochs on the 60k-pair set, Jurek's choice
+# after weighing an 80000-step option against repetition risk — no data
+# augmentation exists here, so this is already a lot of repeats without it).
+# CHECK QUALITY AT INTERVALS (~every 16000 steps) rather than running this
+# to completion blind — there's no guarantee more steps keeps helping past
+# some point, and catching a plateau/regression early avoids wasting
+# further GPU quota chasing it. Still a ceiling, not a target — ckpt.pt is
+# written every CKPT_EVERY steps regardless, safe to grab and stop early.
+BATCH, ACCUM, STEPS, WARMUP = 32, 1, 70000, 200
 
 if os.path.exists(f"{WORK}/gedit"):
     subprocess.run(["git", "-C", f"{WORK}/gedit", "pull", "--ff-only"], check=True)
