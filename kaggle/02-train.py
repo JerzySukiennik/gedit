@@ -20,18 +20,17 @@ REPO = "https://github.com/JerzySukiennik/gedit.git"
 WORK = "/kaggle/working"
 OUT = f"{WORK}/run"
 
-# Cross-attention + zero-init, measured 2026-07-22: ~0.75s/step on T4x2
-# (slightly slower than FiLM's 0.7s/step, as expected — more compute per
-# step). First zero-init checkpoint (step 8000, ~4.3 epochs on 60k pairs)
-# was visibly better than the pre-zero-init run (no longer pure static) but
-# still far from FiLM's comparable-stage coherence, and not yet
-# distinguishing between prompts — cross-attention has a harder thing to
-# learn (attention patterns, not just a global tone shift) and needs more
-# than 4.3 epochs. STEPS raised to 24000 (~12.9 epochs, in line with what
-# worked for FiLM) to give it a real chance before judging the architecture
-# itself. Still a ceiling, not a target — ckpt.pt is written every
-# CKPT_EVERY steps regardless, safe to grab and stop early.
-BATCH, ACCUM, STEPS, WARMUP = 32, 1, 24000, 200
+# Cross-attention + zero-init, measured 2026-07-22: ~0.75s/step on T4x2.
+# Step 24000 (~12.9 epochs) checkpoint DOES respond to text/image
+# conditioning (verified with a fixed-seed real-vs-zero-vs-random-text
+# test) and shows real structure at 100 DDIM sampling steps (20 steps had
+# been hiding it) — but still doesn't reliably follow specific instructions
+# ("make it black and white" didn't desaturate). Not evidence of a broken
+# architecture, more likely still just needs more training for a harder
+# task than FiLM's global tone-shift. STEPS raised to 40000 (~21.5 epochs).
+# Still a ceiling, not a target — ckpt.pt is written every CKPT_EVERY steps
+# regardless, safe to grab and stop early.
+BATCH, ACCUM, STEPS, WARMUP = 32, 1, 40000, 200
 
 if os.path.exists(f"{WORK}/gedit"):
     subprocess.run(["git", "-C", f"{WORK}/gedit", "pull", "--ff-only"], check=True)
