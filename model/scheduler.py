@@ -27,12 +27,16 @@ class DiffusionSchedule:
         return sqrt_acp * x0 + sqrt_1macp * noise, noise
 
     @torch.no_grad()
-    def ddim_sample(self, model, before, text_emb, steps=20, device="cpu"):
+    def ddim_sample(self, model, before, text_emb, steps=100, device="cpu"):
         """Deterministic (eta=0) DDIM sampler, `steps` << self.timesteps.
 
         `steps` trades quality for the seconds-per-edit budget on a CPU/MPS
         Mac (SPEC.md #5 leaves the exact count open until real inference is
-        timed) — 20 is the starting point to tune from.
+        timed). Measured 2026-07-22 on the cross-attention checkpoint: 20
+        steps gave a washed-out result that looked nearly identical
+        regardless of prompt; 100 steps on the SAME checkpoint revealed real
+        structure and color the 20-step version was hiding. Don't judge
+        output quality below ~50.
         """
         b = before.shape[0]
         seq = torch.linspace(self.timesteps - 1, 0, steps, dtype=torch.long, device=device)

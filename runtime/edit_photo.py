@@ -65,6 +65,12 @@ if __name__ == "__main__":
     p.add_argument("--prompt", required=True, help="free-form edit instruction")
     p.add_argument("--ckpt", required=True)
     p.add_argument("--res", type=int, default=128, help="must match the resolution the checkpoint was trained at")
-    p.add_argument("--steps", type=int, default=20)
+    p.add_argument("--steps", type=int, default=100,
+                    help="DDIM sampling steps. Measured 2026-07-22: 20 steps gave a "
+                         "washed-out, near-identical-regardless-of-prompt result on the "
+                         "cross-attention checkpoint that mostly turned out to be a "
+                         "sampling-discretization artifact, not (only) undertraining — "
+                         "100 steps on the SAME checkpoint showed real structure/color the "
+                         "20-step version hid. Don't judge cross-attention quality at <50.")
     p.add_argument("--out", default="./edited.png")
     main(p.parse_args())

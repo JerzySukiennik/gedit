@@ -78,6 +78,8 @@ if __name__ == "__main__":
     p.add_argument("--data", required=True, help="prefix used by fetch_dataset.py's --out-prefix")
     p.add_argument("--ckpt", required=True)
     p.add_argument("--n", type=int, default=8)
-    p.add_argument("--steps", type=int, default=20)
+    p.add_argument("--steps", type=int, default=100,
+                    help="DDIM sampling steps — see runtime/edit_photo.py's --steps help "
+                         "for why this isn't 20 anymore.")
     p.add_argument("--out", default="./sample_check.png")
     main(p.parse_args())
